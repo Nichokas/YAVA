@@ -42,7 +42,6 @@ fn decompress_file(input_file: &str) {
         std::process::exit(1);
     }
 
-    // Extraer metadatos
     let parts: Vec<&str> = content.split("---BEGIN COMPRESSED DATA---\n").collect();
     if parts.len() != 2 {
         eprintln!("{}", "Error: Invalid file format".red());
@@ -52,23 +51,54 @@ fn decompress_file(input_file: &str) {
     let metadata = parts[0];
     let data = parts[1];
 
-    println!("{}", "\n✨ File Information ✨".bright_green());
-    println!("{}", "═".repeat(40).yellow());
+    println!("{}", "\n📂 File Metadata Information 📂".bright_green().bold());
+    println!("{}", "═".repeat(50).yellow());
 
     for line in metadata.lines() {
         if line.starts_with("Original Extension: ") {
-            println!("{}: {}", "Original Extension".blue(),
-                     line.strip_prefix("Original Extension: ").unwrap().cyan());
+            println!("{}: {}", "Original Extension".bright_blue(),
+                     line.strip_prefix("Original Extension: ").unwrap().bright_white());
         } else if line.starts_with("Compressed Date: ") {
-            println!("{}: {}", "Compressed Date".blue(),
-                     line.strip_prefix("Compressed Date: ").unwrap().cyan());
+            println!("{}: {}", "Compressed Date".bright_blue(),
+                     line.strip_prefix("Compressed Date: ").unwrap().bright_white());
         } else if line.starts_with("Compressed by: ") {
-            println!("{}: {}", "SHA-256 Hash".blue(),
+            println!("{}: {}", "SHA-256 Hash".bright_blue(),
                      line.strip_prefix("Compressed by: ").unwrap().yellow());
         }
     }
 
-    println!("{}", "═".repeat(40).yellow());
+    println!("{}", "═".repeat(50).yellow());
+
+    // Obtener el hash original y calcular el actual
+    let original_hash = metadata
+        .lines()
+        .find(|line| line.starts_with("Compressed by: "))
+        .and_then(|line| line.strip_prefix("Compressed by: "))
+        .unwrap_or("");
+
+    let mut hasher = Sha256::new();
+    hasher.update(data.as_bytes());
+    let current_hash = format!("{:x}", hasher.finalize());
+
+    // Verificación de seguridad
+    println!("\n{}", "🔐 Security Verification 🔐".bright_yellow().bold());
+    println!("Verification Time (UTC): {}",
+             Utc::now().format("%Y-%m-%d %H:%M:%S").to_string().cyan());
+    println!("System Username: {}\n", "Nichokas".cyan());
+
+    if original_hash == current_hash {
+        println!("{}", "✅ File integrity verified - No modifications detected".green());
+    } else {
+        println!("{}", "❌ WARNING: File integrity check failed!".red().bold());
+        println!("Expected hash: {}", original_hash.yellow());
+        println!("Current hash:  {}", current_hash.yellow());
+        println!("\n{}", "The file may have been tampered with!".red().bold());
+
+        if !cfg!(debug_assertions) {
+            eprintln!("{}", "Aborting decompression for security".red());
+            std::process::exit(1);
+        }
+    }
 
     // Obtener la extensión original
     let ext = metadata
@@ -77,22 +107,20 @@ fn decompress_file(input_file: &str) {
         .and_then(|line| line.strip_prefix("Original Extension: "))
         .unwrap_or("unknown");
 
-    // Crear nombre del archivo de salida
     let output_name = Path::new(input_file)
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("decoded");
     let output_file = format!("{}.{}", output_name, ext);
 
-    // Escribir archivo descomprimido
     if let Err(_) = fs::write(&output_file, data.as_bytes()) {
         eprintln!("{}", format!("Error: Could not write file '{}'", output_file).red());
         std::process::exit(1);
     }
 
-    println!("\n{}", "✨ Success! ✨".green());
-    println!("Created: {}", output_file.blue());
-    println!("Time: {}", Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string().cyan());
+    println!("\n{}", "✨ Decompression Result ✨".bright_green().bold());
+    println!("Original file restored: {}", output_file.bright_blue());
+    println!("{}", "Decompression completed successfully! ✅".green());
 }
 
 fn compress_file(input_file: &str) {
