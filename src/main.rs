@@ -93,11 +93,9 @@ fn decompress_file(input_file: &str) {
         println!("Expected hash: {}", original_hash.yellow());
         println!("Current hash:  {}", current_hash.yellow());
         println!("\n{}", "The file may have been tampered with!".red().bold());
-
-        if !cfg!(debug_assertions) {
-            eprintln!("{}", "Aborting decompression for security".red());
-            std::process::exit(1);
-        }
+        
+        eprintln!("{}", "Aborting decompression for security".red());
+        std::process::exit(1);
     }
 
     // Obtener la extensión original
