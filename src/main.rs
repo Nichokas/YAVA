@@ -18,7 +18,7 @@ fn main() {
 
     let input_file = &args[1];
 
-    // Verificar si es un archivo .yava
+    // Verify if the file is a .yava
     if input_file.ends_with(".yava") {
         decompress_file(input_file);
     } else {
@@ -69,7 +69,7 @@ fn decompress_file(input_file: &str) {
 
     println!("{}", "═".repeat(50).yellow());
 
-    // Obtener el hash original y calcular el actual
+    // Get the original hash and calculate the current hash
     let original_hash = metadata
         .lines()
         .find(|line| line.starts_with("Compressed by: "))
@@ -80,7 +80,7 @@ fn decompress_file(input_file: &str) {
     hasher.update(data.as_bytes());
     let current_hash = format!("{:x}", hasher.finalize());
 
-    // Verificación de seguridad
+    // Integrity verification
     println!("\n{}", "🔐 Security Verification 🔐".bright_yellow().bold());
     println!("Verification Time (UTC): {}",
              Utc::now().format("%Y-%m-%d %H:%M:%S").to_string().cyan());
@@ -98,7 +98,7 @@ fn decompress_file(input_file: &str) {
         std::process::exit(1);
     }
 
-    // Obtener la extensión original
+    // Get the original extension
     let ext = metadata
         .lines()
         .find(|line| line.starts_with("Original Extension: "))
