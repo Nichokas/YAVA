@@ -1,12 +1,10 @@
 use std::env;
-use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use xz2::read::XzDecoder;
 use xz2::write::XzEncoder;
-use chrono::Utc;
-use sha2::{Sha256, Digest};
+use sha2::Digest;
 use colored::*;
 
 fn modify_hash(input_file: &str, new_hash: Option<String>) {
@@ -21,7 +19,7 @@ fn modify_hash(input_file: &str, new_hash: Option<String>) {
 
     let mut decoder = XzDecoder::new(file);
     let mut content = String::new();
-    if let Err(_) = decoder.read_to_string(&mut content) {
+    if decoder.read_to_string(&mut content).is_err() {
         eprintln!("{}", "Error: Failed to decode file".red());
         std::process::exit(1);
     }
@@ -75,17 +73,17 @@ fn modify_hash(input_file: &str, new_hash: Option<String>) {
     let mut encoder = XzEncoder::new(file, 6);
 
     // Escribir la nueva metadata y datos
-    if let Err(_) = encoder.write_all(format!("{}---BEGIN COMPRESSED DATA---\n", new_metadata).as_bytes()) {
+    if encoder.write_all(format!("{}---BEGIN COMPRESSED DATA---\n", new_metadata).as_bytes()).is_err() {
         eprintln!("{}", "Error: Failed to write metadata".red());
         std::process::exit(1);
     }
 
-    if let Err(_) = encoder.write_all(data.as_bytes()) {
+    if encoder.write_all(data.as_bytes()).is_err() {
         eprintln!("{}", "Error: Failed to write data".red());
         std::process::exit(1);
     }
 
-    if let Err(_) = encoder.finish() {
+    if encoder.finish().is_err() {
         eprintln!("{}", "Error: Failed to finish compression".red());
         std::process::exit(1);
     }
