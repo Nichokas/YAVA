@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.39"
-xz2 = "0.1.7"
 sha2 = "0.10.8"
 colored = "2.1.0"
+liblzma = "0.3.5"
