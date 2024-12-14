@@ -2,8 +2,8 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use xz2::read::XzDecoder;
-use xz2::write::XzEncoder;
+use liblzma::read::XzDecoder;
+use liblzma::write::XzEncoder;
 use sha2::Digest;
 use colored::*;
 
