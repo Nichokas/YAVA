@@ -84,7 +84,6 @@ fn decompress_file(input_file: &str) {
     println!("\n{}", "🔐 Security Verification 🔐".bright_yellow().bold());
     println!("Verification Time (UTC): {}",
              Utc::now().format("%Y-%m-%d %H:%M:%S").to_string().cyan());
-    println!("System Username: {}\n", "Nichokas".cyan());
 
     if original_hash == current_hash {
         println!("{}", "✅ File integrity verified - No modifications detected".green());
