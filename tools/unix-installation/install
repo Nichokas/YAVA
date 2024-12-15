@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Reset
+Color_Off=''
+Red=''
+Green=''
+Dim=''
+Bold_White=''
+Yellow=''
+
+if [[ -t 1 ]]; then
+    Color_Off='\033[0m'
+    Red='\033[0;31m'
+    Green='\033[0;32m'
+    Dim='\033[0;2m'
+    Bold_White='\033[1m'
+    Yellow='\033[0;33m'
+fi
+
+error() {
+    echo -e "${Red}error${Color_Off}:" "$@" >&2
+    exit 1
+}
+
+info() {
+    echo -e "${Dim}$@ ${Color_Off}"
+}
+
+info_bold() {
+    echo -e "${Bold_White}$@ ${Color_Off}"
+}
+
+success() {
+    echo -e "${Green}$@ ${Color_Off}"
+}
+
+warning() {
+    echo -e "${Yellow}notice${Color_Off}:" "$@"
+}
+
+# Check for checksum command
+if command -v sha256sum >/dev/null 2>&1; then
+    SHA256_CMD="sha256sum"
+elif command -v shasum >/dev/null 2>&1; then
+    SHA256_CMD="shasum -a 256"
+else
+    error "Neither sha256sum nor shasum command found"
+fi
+
+platform=$(uname -ms)
+install_dir="$HOME/.yava"
+bin_dir="$install_dir/bin"
+exe="$bin_dir/yava"
+
+# Check if YAVA is already installed
+if [ -f "$exe" ]; then
+    warning "YAVA is already installed at $exe"
+    info "To update YAVA to the latest version, run:"
+    info_bold "  yava -u"
+    echo
+    read -p "Do you want to continue with the installation? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 0
+    fi
+fi
+
+# Determine target architecture
+case $platform in
+    'Darwin x86_64')
+        target="darwin-amd64"
+        ;;
+    'Darwin arm64')
+        target="darwin-arm64"
+        ;;
+    'Linux aarch64' | 'Linux arm64')
+        target="linux-arm64"
+        ;;
+    'Linux x86_64')
+        target="linux-amd64"
+        ;;
+    *)
+        error "Unsupported platform: $platform"
+        ;;
+esac
+
+# Set executable name based on OS
+if [[ $platform == *"Darwin"* ]] || [[ $platform == *"Linux"* ]]; then
+    binary_name="yava-$target"
+else
+    binary_name="yava-$target.exe"
+fi
+
+# Create installation directory
+if [[ ! -d $bin_dir ]]; then
+    mkdir -p "$bin_dir" ||
+        error "Failed to create install directory \"$bin_dir\""
+fi
+
+# GitHub repository information
+GITHUB=${GITHUB-"https://github.com"}
+github_repo="$GITHUB/nichokas/YAVA"
+release_url="$github_repo/releases/latest/download"
+
+# Download binary and checksum
+info "Downloading YAVA for $target..."
+curl --fail --location --progress-bar --output "$bin_dir/$binary_name" "$release_url/$binary_name" ||
+    error "Failed to download YAVA binary"
+
+curl --fail --location --silent --output "$bin_dir/$binary_name.sha256" "$release_url/$binary_name.sha256" ||
+    error "Failed to download checksum file"
+
+# Verify checksum
+cd "$bin_dir"
+expected_hash=$(cat "$binary_name.sha256")
+if [[ "$platform" == *"Darwin"* ]]; then
+    computed_hash=$(shasum -a 256 "$binary_name" | cut -d ' ' -f 1)
+else
+    computed_hash=$(sha256sum "$binary_name" | cut -d ' ' -f 1)
+fi
+
+if [[ "$computed_hash" != "$expected_hash" ]]; then
+    error "Checksum verification failed"
+    error "Expected: $expected_hash"
+    error "Got: $computed_hash"
+fi
+
+info "Checksum verification passed"
+
+# Make binary executable and create symlink
+chmod +x "$binary_name" ||
+    error "Failed to make binary executable"
+
+ln -sf "$binary_name" "$exe" ||
+    error "Failed to create symbolic link"
+
+# Clean up
+rm -f "$binary_name.sha256"
+
+success "YAVA was installed successfully to $bin_dir"
+
+# Detect shell and configure PATH
+SHELL_CONFIG=""
+case $(basename "$SHELL") in
+    zsh)
+        SHELL_CONFIG="$HOME/.zshrc"
+        ;;
+    bash)
+        SHELL_CONFIG="$HOME/.bashrc"
+        ;;
+    *)
+        SHELL_CONFIG="your shell's config file"
+        ;;
+esac
+
+if [[ -f "$SHELL_CONFIG" ]] && [[ "$SHELL_CONFIG" != "your shell's config file" ]]; then
+    if ! grep -q "$bin_dir" "$SHELL_CONFIG"; then
+        echo "" >> "$SHELL_CONFIG"
+        echo "# YAVA Path" >> "$SHELL_CONFIG"
+        echo "export PATH=\"$bin_dir:\$PATH\"" >> "$SHELL_CONFIG"
+        success "Added YAVA to PATH in $SHELL_CONFIG"
+        echo
+        info "To start using YAVA, either:"
+        info_bold "  1. Restart your terminal"
+        info_bold "  2. Or run: source $SHELL_CONFIG"
+    else
+        success "YAVA path is already in $SHELL_CONFIG"
+    fi
+else
+    echo
+    info "To use YAVA, add the following line to your shell configuration file ($SHELL_CONFIG):"
+    echo
+    info_bold "  export PATH=\"$bin_dir:\$PATH\""
+    echo
+    info "Then restart your shell or run:"
+    info_bold "  source $SHELL_CONFIG"
+fi
+
+info "To update YAVA in the future, simply run:"
+info_bold "  yava -u"
